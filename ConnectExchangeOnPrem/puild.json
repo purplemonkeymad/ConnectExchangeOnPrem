@@ -1,0 +1,24 @@
+{
+    "PrivateRegexs":  [
+                          "\\.private\\.ps.?1",
+                          "\\\\private\\\\"
+                      ],
+    "ScriptsToProcessMask":  [
+                                 "\\\\ScriptsToProcess\\\\"
+                             ],
+    "SettingsVersion":  6,
+    "ResetBuildNumberOnRelease":  true,
+    "ResolveEPSOnInvoke":  false,
+    "OnBuildRepository":  [
+
+                          ],
+    "OnMinorRepository":  [
+
+                          ],
+    "OnMajorRepository":  [
+
+                          ],
+    "CompileCsFiles":  false,
+    "SingleFile":  true,
+    "ModuleName":  "ConnectExchangeOnPrem"
+}
