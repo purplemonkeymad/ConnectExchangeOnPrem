@@ -51,7 +51,10 @@ function Connect-ExchangeOnPrem {
         $Credential,
         [Parameter()]
         [string]
-        $Prefix
+        $Prefix,
+        [Parameter()]
+        [string]
+        $VersionString
     )
     
     begin {}
@@ -64,11 +67,18 @@ function Connect-ExchangeOnPrem {
                 $DNC = ([adsi]'LDAP://RootDSE').Get("Defaultnamingcontext")
                 $Searcher = [adsisearcher]'(objectclass=msExchExchangeServer)'
                 $Searcher.SearchRoot = "LDAP://CN=configuration,$DNC"
-                $ExchangeServers = [array]$Searcher.FindAll()
+                $ExchangeServers = ([array]$Searcher.FindAll()) | Sort-Object {$_.Properties['serialnumber']} -Descending
             } catch {
                 Write-Error "Unable to contact domain, Please specify a ComputerName." -Exception $_
                 return
             }
+
+            # if we are filtering the version, find only servers that match that wildcard
+
+            if ($VersionString) {
+                $ExchangeServers = $ExchangeServers | Where-Object {$_.Properties['serialnumber'] -like $VersionString}
+            }
+
         
             # Check if we Got any results
             if ($ExchangeServers.count -eq 0){
@@ -89,12 +99,11 @@ function Connect-ExchangeOnPrem {
             # make a single call to ldap.
 
             $LDAPServerQueryTemplate = "(&(objectclass=computer)(|{0}))"
-            $NameQueryList = foreach ($ExchangeServer in $ExchangeServers){
+            [array]$AllHostname = foreach ($ExchangeServer in $ExchangeServers){
                 $CanonicalName = $ExchangeServer.Properties.name # properties are case sensitive
-                "(name=$CanonicalName)"
+                $LDAPServerQuery = $LDAPServerQueryTemplate -f "(name=$CanonicalName)"
+                ([adsisearcher]$LDAPServerQuery).FindAll().Properties.dnshostname | Where-Object {$_}
             }
-            $LDAPServerQuery = $LDAPServerQueryTemplate -f ($NameQueryList -join '')
-            [array]$AllHostname = ([adsisearcher]$LDAPServerQuery).FindAll().Properties.dnshostname
 
             # Try to create a session with each of the servers.
             $index = 0
