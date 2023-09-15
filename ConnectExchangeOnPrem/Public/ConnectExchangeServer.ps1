@@ -36,6 +36,13 @@ This parameter supports wildcards so "Version 15.2* will only connect to Exchang
 Connect-ExchangeOnPrem
 
 With no parameters, the command will attempt to lookup a working Exchange server in AD. It will then connect using the default Kerberos authentication.
+
+.EXAMPLE
+Connect-ExchangeOnPrem -VersionString "Version 15.0*"
+
+Lookup server list from AD, but only try to connect to a server who's Admin Version matches the specified version.
+In this example it will only connect to Exchange 2013 servers.
+
 .NOTES
 
 #>
