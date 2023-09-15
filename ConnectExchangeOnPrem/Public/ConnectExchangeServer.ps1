@@ -6,6 +6,7 @@ Connect to and import a implicit remoting session from an On-Premises Exchange d
 This command makes connection to an On-Premises exchange simple. It is intended to be an On-Premises equivalent of the Connect-ExchangeOnline command.
 
 It will attempt to discover existing exchange servers in the current domain. It will then attempt to connect to each exchange server and import the first sucessful session.
+The search order is determined by the server version, it will try newer exchange servers first.
 
 .PARAMETER ComputerName
 Specify the hostname of the exchange server to connect to.
@@ -24,6 +25,12 @@ Credential to connect to the Exchange server. You should only need this if you c
 Prefix commands from the implicit module with the specified string.
 
 This comes from the module import so will Prefix to the Noun of the command.
+
+.PARAMETER VersionString
+Only connect to servers that have the given admin version.
+The version string is the same format as the admin version from Get-ExchangeServer ie "Version 15.0 (Build 1234.56)"
+
+This parameter supports wildcards so "Version 15.2* will only connect to Exchange 2019 servers."
 
 .EXAMPLE
 Connect-ExchangeOnPrem
