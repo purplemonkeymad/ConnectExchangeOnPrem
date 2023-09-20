@@ -6,6 +6,7 @@ Connect to and import a implicit remoting session from an On-Premises Exchange d
 This command makes connection to an On-Premises exchange simple. It is intended to be an On-Premises equivalent of the Connect-ExchangeOnline command.
 
 It will attempt to discover existing exchange servers in the current domain. It will then attempt to connect to each exchange server and import the first sucessful session.
+The search order is determined by the server version, it will try newer exchange servers first.
 
 .PARAMETER ComputerName
 Specify the hostname of the exchange server to connect to.
@@ -25,10 +26,23 @@ Prefix commands from the implicit module with the specified string.
 
 This comes from the module import so will Prefix to the Noun of the command.
 
+.PARAMETER VersionString
+Only connect to servers that have the given admin version.
+The version string is the same format as the admin version from Get-ExchangeServer ie "Version 15.0 (Build 1234.56)"
+
+This parameter supports wildcards so "Version 15.2* will only connect to Exchange 2019 servers."
+
 .EXAMPLE
 Connect-ExchangeOnPrem
 
 With no parameters, the command will attempt to lookup a working Exchange server in AD. It will then connect using the default Kerberos authentication.
+
+.EXAMPLE
+Connect-ExchangeOnPrem -VersionString "Version 15.0*"
+
+Lookup server list from AD, but only try to connect to a server who's Admin Version matches the specified version.
+In this example it will only connect to Exchange 2013 servers.
+
 .NOTES
 
 #>
@@ -51,7 +65,10 @@ function Connect-ExchangeOnPrem {
         $Credential,
         [Parameter()]
         [string]
-        $Prefix
+        $Prefix,
+        [Parameter()]
+        [string]
+        $VersionString
     )
     
     begin {}
@@ -64,11 +81,18 @@ function Connect-ExchangeOnPrem {
                 $DNC = ([adsi]'LDAP://RootDSE').Get("Defaultnamingcontext")
                 $Searcher = [adsisearcher]'(objectclass=msExchExchangeServer)'
                 $Searcher.SearchRoot = "LDAP://CN=configuration,$DNC"
-                $ExchangeServers = [array]$Searcher.FindAll()
+                $ExchangeServers = ([array]$Searcher.FindAll()) | Sort-Object {$_.Properties['serialnumber']} -Descending
             } catch {
                 Write-Error "Unable to contact domain, Please specify a ComputerName." -Exception $_
                 return
             }
+
+            # if we are filtering the version, find only servers that match that wildcard
+
+            if ($VersionString) {
+                $ExchangeServers = $ExchangeServers | Where-Object {$_.Properties['serialnumber'] -like $VersionString}
+            }
+
         
             # Check if we Got any results
             if ($ExchangeServers.count -eq 0){
@@ -89,12 +113,11 @@ function Connect-ExchangeOnPrem {
             # make a single call to ldap.
 
             $LDAPServerQueryTemplate = "(&(objectclass=computer)(|{0}))"
-            $NameQueryList = foreach ($ExchangeServer in $ExchangeServers){
+            [array]$AllHostname = foreach ($ExchangeServer in $ExchangeServers){
                 $CanonicalName = $ExchangeServer.Properties.name # properties are case sensitive
-                "(name=$CanonicalName)"
+                $LDAPServerQuery = $LDAPServerQueryTemplate -f "(name=$CanonicalName)"
+                ([adsisearcher]$LDAPServerQuery).FindAll().Properties.dnshostname | Where-Object {$_}
             }
-            $LDAPServerQuery = $LDAPServerQueryTemplate -f ($NameQueryList -join '')
-            [array]$AllHostname = ([adsisearcher]$LDAPServerQuery).FindAll().Properties.dnshostname
 
             # Try to create a session with each of the servers.
             $index = 0
