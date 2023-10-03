@@ -43,7 +43,8 @@ Connect-ExchangeOnPrem -VersionString "Version 15.0*"
 Lookup server list from AD, but only try to connect to a server who's Admin Version matches the specified version.
 In this example it will only connect to Exchange 2013 servers.
 
-.NOTES
+.Link
+https://github.com/purplemonkeymad/ConnectExchangeOnPrem/tree/master/docs/Connect-ExchangeOnPrem.md
 
 #>
 
